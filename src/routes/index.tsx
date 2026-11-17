@@ -1,23 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GTSolarApp } from "@/components/gt-solar/GTSolarApp";
 
-// The home route ships no og:image, so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "GT Solar | Gestão de Orçamentos" },
+      {
+        name: "description",
+        content:
+          "Plataforma profissional de dimensionamento, precificação e gestão de propostas comerciais de soluções de energia solar e aquecimento.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  return <GTSolarApp />;
 }
