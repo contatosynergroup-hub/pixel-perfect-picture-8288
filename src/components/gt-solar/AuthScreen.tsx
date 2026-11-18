@@ -3,42 +3,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Sun,
-  ShieldCheck,
-  UserCheck,
   Lock,
   Mail,
-  User,
-  Phone,
   ArrowRight,
   Loader2,
+  ShieldCheck,
+  User,
 } from "lucide-react";
 
 export function AuthScreen() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  // Apenas para o 1º acesso caso o Administrador Master ainda não tenha sido configurado no banco
+  const [showFirstAdminSetup, setShowFirstAdminSetup] = useState(false);
+  const [adminName, setAdminName] = useState("");
+
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      toast.error("Preencha o e-mail e a senha.");
+      toast.error("Informe seu e-mail e senha de acesso.");
       return;
     }
     setLoading(true);
     try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        toast.success("Bem-vindo ao GT Solar | Gestão de Orçamentos!");
-      } else {
-        if (!fullName.trim()) {
-          toast.error("Informe o seu nome completo.");
+      if (showFirstAdminSetup) {
+        if (!adminName.trim()) {
+          toast.error("Informe o nome do Administrador.");
           setLoading(false);
           return;
         }
@@ -47,26 +39,32 @@ export function AuthScreen() {
           password,
           options: {
             data: {
-              full_name: fullName.trim(),
-              phone: phone.trim(),
+              full_name: adminName.trim(),
             },
           },
         });
         if (error) throw error;
         if (data.session) {
-          toast.success("Conta criada e autenticada com sucesso!");
+          toast.success("Administrador configurado com sucesso!");
         } else {
           toast.success(
-            "Cadastro realizado! Verifique seu e-mail ou faça login abaixo.",
+            "Administrador registrado! Faça login abaixo com suas credenciais.",
           );
-          setMode("login");
+          setShowFirstAdminSetup(false);
         }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        toast.success("Bem-vindo ao GT Solar | Gestão de Orçamentos!");
       }
     } catch (err: any) {
       toast.error(
         err?.message === "Invalid login credentials"
-          ? "E-mail ou senha incorretos."
-          : err?.message || "Erro na autenticação.",
+          ? "E-mail ou senha inválidos. Solicite seu acesso ao Administrador."
+          : err?.message || "Erro ao autenticar.",
       );
     } finally {
       setLoading(false);
@@ -74,152 +72,63 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-950 text-white">
-      {/* Painel institucional lateral (Azul Solar + Laranja GT Solar) */}
-      <div className="lg:w-7/12 relative overflow-hidden bg-gradient-to-br from-[#0B1E36] via-[#0F2942] to-[#173A5E] p-8 lg:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10">
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0B1E36] via-[#0F2942] to-[#173A5E] p-4 relative overflow-hidden">
+      {/* Efeitos sutis de iluminação solar ao fundo */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-orange-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-sky-500/15 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-300 text-xs font-semibold tracking-wider uppercase">
-            <Sun className="w-4 h-4 text-orange-400" />
-            Plataforma Comercial & Engenharia
+      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+        {/* Topo com Identidade Visual GT Solar */}
+        <div className="bg-[#0F2942] px-8 pt-8 pb-6 text-center border-b-4 border-orange-500">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-500 text-white shadow-md mb-3">
+            <Sun className="w-6 h-6" />
           </div>
-
-          <div className="mt-8">
-            <div className="inline-flex items-center gap-4">
-              <div className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-xs text-slate-300">
-                Espaço reservado para Logotipo Oficial GT Solar
-              </div>
-            </div>
-            <h1 className="mt-6 text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight">
-              GT Solar{" "}
-              <span className="text-orange-500">| Gestão de Orçamentos</span>
-            </h1>
-            <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
-              Dimensionamento técnico preciso, formação de preços comerciais e
-              emissão de propostas em PDF para energia solar fotovoltaica,
-              aquecimento solar de água (boiler) e aquecimento de piscinas.
-            </p>
-          </div>
-
-          <div className="mt-10 grid sm:grid-cols-2 gap-4 max-w-2xl">
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-              <div className="flex items-center gap-2.5 text-orange-400 font-semibold text-sm">
-                <ShieldCheck className="w-5 h-5" />
-                Acesso Administrador
-              </div>
-              <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
-                Gestão de usuários, catálogo de produtos, parâmetros de
-                dimensionamento, margens por categoria, dados da empresa e visão
-                global de vendas.
-              </p>
-            </div>
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-              <div className="flex items-center gap-2.5 text-sky-400 font-semibold text-sm">
-                <UserCheck className="w-5 h-5" />
-                Acesso Vendedor
-              </div>
-              <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
-                Cadastro de clientes, calculadoras de dimensionamento (FV,
-                Boiler e Piscina), criação de orçamentos e emissão de propostas
-                comerciais em PDF.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+            GT Solar
+          </h1>
+          <p className="text-xs font-semibold uppercase tracking-widest text-orange-400 mt-0.5">
+            Gestão de Orçamentos
+          </p>
         </div>
 
-        <div className="relative z-10 mt-12 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400">
-          <span>GT Solar — Energia Solar & Aquecimento</span>
-          <span>
-            Nota: O 1º usuário cadastrado no banco assume automaticamente o
-            perfil de Administrador.
-          </span>
-        </div>
-      </div>
-
-      {/* Formulário de Login / Cadastro */}
-      <div className="lg:w-5/12 flex items-center justify-center p-6 sm:p-12 bg-white text-slate-900">
-        <div className="w-full max-w-md">
-          <div className="flex rounded-xl bg-slate-100 p-1 mb-8">
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-                mode === "login"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Entrar na Plataforma
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-                mode === "signup"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Criar Nova Conta
-            </button>
-          </div>
-
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">
-              {mode === "login"
-                ? "Acesse sua conta comercial"
-                : "Cadastro de colaborador"}
+        {/* Formulário Exclusivo de Login */}
+        <div className="p-8">
+          <div className="mb-6 text-center">
+            <h2 className="text-lg font-bold text-slate-900">
+              {showFirstAdminSetup
+                ? "Configuração Inicial do Administrador"
+                : "Acesso Restrito à Plataforma"}
             </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {mode === "login"
-                ? "Informe suas credenciais corporativas para acessar o sistema."
-                : "Preencha seus dados para acessar o sistema de orçamentos GT Solar."}
+            <p className="text-xs text-slate-500 mt-1">
+              {showFirstAdminSetup
+                ? "Cadastre a conta matriz de Administrador para gerenciar usuários e vendedores."
+                : "Entre com o login e senha fornecidos pela administração da GT Solar."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Nome Completo *
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Ex: Carlos Mendes"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            {showFirstAdminSetup && (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Nome do Administrador *
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    placeholder="Nome completo"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Telefone / WhatsApp Comercial
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="(00) 90000-0000"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                </div>
-              </>
+              </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                E-mail Corporativo *
+                E-mail de Acesso *
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -228,8 +137,8 @@ export function AuthScreen() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="voce@gtsolar.com.br"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="seu.email@gtsolar.com.br"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
             </div>
@@ -246,8 +155,8 @@ export function AuthScreen() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo de 6 caracteres"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
             </div>
@@ -255,7 +164,7 @@ export function AuthScreen() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white font-semibold py-3 px-4 text-sm shadow-sm transition-colors cursor-pointer"
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white font-bold py-3 px-4 text-sm shadow-sm transition-colors cursor-pointer"
             >
               {loading ? (
                 <>
@@ -264,14 +173,31 @@ export function AuthScreen() {
                 </>
               ) : (
                 <>
-                  {mode === "login"
-                    ? "Entrar no Sistema"
-                    : "Concluir Cadastro"}
+                  {showFirstAdminSetup
+                    ? "Ativar Conta Administrador"
+                    : "Entrar no Sistema"}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
+
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <p className="text-[11px] text-slate-400">
+              Novos vendedores e usuários são cadastrados exclusivamente no
+              painel do Administrador.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFirstAdminSetup((v) => !v)}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-orange-600 transition-colors cursor-pointer"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              {showFirstAdminSetup
+                ? "Voltar para a tela de Login"
+                : "Primeiro acesso? Configurar Administrador Master"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useGTSolar } from "@/lib/gt-solar-store";
-import type { AppRole } from "@/lib/calculators";
+import { UsersManagementView } from "./UsersManagementView";
 import { toast } from "sonner";
 import {
   Building2,
@@ -8,8 +8,6 @@ import {
   Users,
   Upload,
   Save,
-  ShieldCheck,
-  UserCheck,
   Image as ImageIcon,
   Trash2,
 } from "lucide-react";
@@ -21,11 +19,9 @@ export function SettingsView() {
     boilerParams,
     poolParams,
     allProfiles,
-    allUserRoles,
     isAdmin,
     saveCompanySettings,
     saveSizingParameters,
-    updateUserRoleAndStatus,
   } = useGTSolar();
 
   const [subTab, setSubTab] = useState<"empresa" | "parametros" | "usuarios">(
@@ -128,13 +124,6 @@ export function SettingsView() {
       default_validity_days: Number(defaultValidityDays) || 15,
       updated_at: new Date().toISOString(),
     });
-  };
-
-  const getUserRole = (userId: string): AppRole => {
-    const hasAdmin = allUserRoles.some(
-      (r) => r.user_id === userId && r.role === "admin",
-    );
-    return hasAdmin ? "admin" : "vendedor";
   };
 
   return (
@@ -760,94 +749,7 @@ export function SettingsView() {
       )}
 
       {/* ABA 3: GESTÃO DE USUÁRIOS E PERMISSÕES */}
-      {subTab === "usuarios" && isAdmin && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="p-5 border-b border-slate-200">
-            <h3 className="text-base font-bold text-slate-900">
-              Controle de Usuários e Níveis de Acesso (Administrador / Vendedor)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Gerencie os colaboradores cadastrados, altere o perfil de acesso
-              ou ative/desative contas.
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase">
-                  <th className="py-3 px-4 font-semibold">Nome Completo</th>
-                  <th className="py-3 px-4 font-semibold">E-mail</th>
-                  <th className="py-3 px-4 font-semibold">Telefone</th>
-                  <th className="py-3 px-4 font-semibold">Nível de Acesso</th>
-                  <th className="py-3 px-4 font-semibold text-center">
-                    Status da Conta
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {allProfiles.map((p) => {
-                  const currentRole = getUserRole(p.id);
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-50">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {p.full_name || "Colaborador"}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-700">
-                        {p.email || "—"}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-700">
-                        {p.phone || "—"}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="inline-flex items-center gap-2">
-                          {currentRole === "admin" ? (
-                            <ShieldCheck className="w-4 h-4 text-orange-600" />
-                          ) : (
-                            <UserCheck className="w-4 h-4 text-sky-600" />
-                          )}
-                          <select
-                            value={currentRole}
-                            onChange={(e) =>
-                              updateUserRoleAndStatus(
-                                p.id,
-                                e.target.value as AppRole,
-                                p.active,
-                              )
-                            }
-                            className="rounded-lg border border-slate-300 px-2.5 py-1 font-semibold bg-white"
-                          >
-                            <option value="admin">Administrador</option>
-                            <option value="vendedor">Vendedor</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateUserRoleAndStatus(
-                              p.id,
-                              currentRole,
-                              !p.active,
-                            )
-                          }
-                          className={`px-3 py-1 rounded-full font-bold text-[11px] cursor-pointer ${
-                            p.active
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}
-                        >
-                          {p.active ? "Ativo" : "Bloqueado"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {subTab === "usuarios" && isAdmin && <UsersManagementView />}
     </div>
   );
 }

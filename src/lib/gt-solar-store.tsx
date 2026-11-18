@@ -6,9 +6,9 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import { createClient, type Session, type User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import type { Database, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import {
   DEFAULT_BOILER_PARAMS,
   DEFAULT_POOL_PARAMS,
@@ -41,6 +41,7 @@ export type NavigationTab =
   | "orcamentos"
   | "clientes"
   | "produtos"
+  | "usuarios"
   | "configuracoes";
 
 interface GTSolarContextValue {
@@ -125,6 +126,13 @@ interface GTSolarContextValue {
     modality: QuoteModality,
     params: Record<string, number>,
   ) => Promise<void>;
+  createTeamUser: (input: {
+    fullName: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role: AppRole;
+  }) => Promise<boolean>;
   updateUserRoleAndStatus: (
     targetUserId: string,
     newRole: AppRole,
@@ -820,6 +828,89 @@ export function GTSolarProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const createTeamUser = async (input: {
+    fullName: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role: AppRole;
+  }): Promise<boolean> => {
+    try {
+      const supabaseUrl =
+        import.meta.env["VITE_SUPABASE_URL"] ||
+        "https://c--f846d2c8-6339-4be0-9661-77343b8a9b13-prod.lovable.cloud";
+      const supabaseKey =
+        import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+        "sb_publishable_2jRKp1XJV1JGaPhQ4HaPPw_1Jl9DdjH";
+
+      const isolatedClient = createClient<Database>(supabaseUrl, supabaseKey, {
+        global: {
+          fetch: (urlInput, init) => {
+            const headers = new Headers(init?.headers);
+            if (
+              (supabaseKey.startsWith("sb_publishable_") ||
+                supabaseKey.startsWith("sb_secret_")) &&
+              headers.get("Authorization") === `Bearer ${supabaseKey}`
+            ) {
+              headers.delete("Authorization");
+            }
+            headers.set("apikey", supabaseKey);
+            return fetch(urlInput, { ...init, headers });
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          storageKey: "gt-solar-admin-temp-signup",
+        },
+      });
+
+      const { data, error } = await isolatedClient.auth.signUp({
+        email: input.email.trim(),
+        password: input.password,
+        options: {
+          data: {
+            full_name: input.fullName.trim(),
+            phone: input.phone?.trim() || "",
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      const createdUserId = data.user?.id;
+      if (createdUserId) {
+        // Atualiza telefone/nome no perfil criado pelo trigger e define o papel escolhido pelo Admin
+        await supabase
+          .from("profiles")
+          .update({
+            full_name: input.fullName.trim(),
+            email: input.email.trim(),
+            phone: input.phone?.trim() || null,
+            active: true,
+          })
+          .eq("id", createdUserId);
+
+        if (input.role === "admin") {
+          await supabase.from("user_roles").delete().eq("user_id", createdUserId);
+          await supabase
+            .from("user_roles")
+            .insert({ user_id: createdUserId, role: "admin" });
+        }
+      }
+
+      await refreshAllData();
+      toast.success(
+        `Usuário ${input.fullName.trim()} (${input.role === "admin" ? "Administrador" : "Vendedor"}) cadastrado com sucesso!`,
+      );
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao cadastrar novo usuário.");
+      return false;
+    }
+  };
+
   const updateUserRoleAndStatus = async (
     targetUserId: string,
     newRole: AppRole,
@@ -852,7 +943,7 @@ export function GTSolarProvider({ children }: { children: ReactNode }) {
       if (user && targetUserId === user.id) {
         setRole(newRole);
       }
-      toast.success("Permissões do usuário atualizadas!");
+      toast.success("Dados e permissões do usuário atualizados!");
     } catch (err: any) {
       toast.error(err?.message || "Erro ao atualizar usuário.");
     }
@@ -901,6 +992,7 @@ export function GTSolarProvider({ children }: { children: ReactNode }) {
         fetchQuoteHistoryAndRevisions,
         saveCompanySettings,
         saveSizingParameters,
+        createTeamUser,
         updateUserRoleAndStatus,
       }}
     >

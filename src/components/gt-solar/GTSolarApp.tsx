@@ -10,6 +10,7 @@ import { QuoteWizardView } from "./QuoteWizardView";
 import { QuotesListView } from "./QuotesListView";
 import { ClientsView } from "./ClientsView";
 import { ProductsView } from "./ProductsView";
+import { UsersManagementView } from "./UsersManagementView";
 import { SettingsView } from "./SettingsView";
 import {
   LayoutDashboard,
@@ -22,6 +23,7 @@ import {
   RefreshCw,
   ShieldCheck,
   UserCheck,
+  UserCog,
   Menu,
   X,
   Building2,
@@ -32,6 +34,7 @@ const NAV_ITEMS: Array<{
   id: NavigationTab;
   label: string;
   icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
 }> = [
   { id: "dashboard", label: "Dashboard Comercial", icon: LayoutDashboard },
   {
@@ -42,6 +45,12 @@ const NAV_ITEMS: Array<{
   { id: "orcamentos", label: "Gestão de Orçamentos", icon: FileSpreadsheet },
   { id: "clientes", label: "Cadastro de Clientes", icon: Users },
   { id: "produtos", label: "Catálogo de Produtos", icon: Package },
+  {
+    id: "usuarios",
+    label: "Vendedores & Usuários (Admin)",
+    icon: UserCog,
+    adminOnly: true,
+  },
   { id: "configuracoes", label: "Configurações & Parâmetros", icon: Settings },
 ];
 
@@ -80,6 +89,9 @@ function GTSolarWorkspace() {
   const displayName =
     profile?.full_name || user.email?.split("@")[0] || "Colaborador";
   const tradeName = companySettings?.trade_name || "GT Solar";
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || isAdmin,
+  );
 
   return (
     <div className="min-h-screen flex bg-slate-100 text-slate-900">
@@ -130,7 +142,7 @@ function GTSolarWorkspace() {
 
         {/* Menu de Navegação */}
         <nav className="flex-1 px-3 space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
             return (
@@ -260,7 +272,7 @@ function GTSolarWorkspace() {
                 </div>
 
                 <nav className="space-y-1">
-                  {NAV_ITEMS.map((item) => {
+                  {visibleNavItems.map((item) => {
                     const Icon = item.icon;
                     const active = activeTab === item.id;
                     return (
@@ -307,6 +319,7 @@ function GTSolarWorkspace() {
           {activeTab === "orcamentos" && <QuotesListView />}
           {activeTab === "clientes" && <ClientsView />}
           {activeTab === "produtos" && <ProductsView />}
+          {activeTab === "usuarios" && <UsersManagementView />}
           {activeTab === "configuracoes" && <SettingsView />}
         </main>
       </div>
